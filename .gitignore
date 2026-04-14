@@ -1,0 +1,47 @@
+# === SECRETS — NEVER COMMIT ===
+.env
+.env.local
+.env.*.local
+*.env
+
+# === DATA ===
+data/raw/
+data/processed/
+
+# === PYTHON ===
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === NODE / FRONTEND ===
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+frontend/dist/
+frontend/build/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE ===
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# === LOGS ===
+*.log
+logs/
