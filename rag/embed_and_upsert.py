@@ -88,18 +88,16 @@ def main():
     pinecone_key = os.getenv("PINECONE_API_KEY")
     index_name = os.getenv("PINECONE_INDEX", "argus-index")
 
-    for name, val in [("COHERE_API_KEY", cohere_key), ("PINECONE_API_KEY", pinecone_key)]:
-        if not val:
-            print(f"ERROR: {name} not set in .env")
-            sys.exit(1)
+    missing = [n for n, v in [("COHERE_API_KEY", cohere_key), ("PINECONE_API_KEY", pinecone_key)] if not v]
+    if missing:
+        raise RuntimeError(f"Missing env vars: {', '.join(missing)}")
 
     co = cohere.Client(cohere_key)
     pc = Pinecone(api_key=pinecone_key)
 
     existing = [idx.name for idx in pc.list_indexes()]
     if index_name not in existing:
-        print(f"ERROR: Index '{index_name}' does not exist. Run scripts/create_index.py first.")
-        sys.exit(1)
+        raise RuntimeError(f"Index '{index_name}' does not exist. Run scripts/create_index.py first.")
 
     index = pc.Index(index_name)
 
@@ -108,7 +106,7 @@ def main():
 
     if not sources:
         print("No records found in data/processed/. Run the ingestion scripts first.")
-        sys.exit(0)
+        return 0
 
     total_upserted = 0
 
@@ -165,7 +163,12 @@ def main():
                 print(f"\n  ERROR upserting batch at {upsert_start}: {e}")
 
     print(f"\n=== Done. Total vectors upserted: {total_upserted:,} ===")
+    return total_upserted
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
+        sys.exit(1)

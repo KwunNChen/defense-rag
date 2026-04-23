@@ -41,8 +41,7 @@ def get_clients():
     ] if not v]
 
     if missing:
-        print(f"ERROR: Missing env vars: {', '.join(missing)}")
-        sys.exit(1)
+        raise ValueError(f"Missing env vars: {', '.join(missing)}")
 
     co = cohere.Client(cohere_key)
     pc = Pinecone(api_key=pinecone_key)
@@ -77,39 +76,43 @@ def build_context(matches: list[dict]) -> str:
     return "\n\n".join(blocks)
 
 
-def ask(question: str) -> str:
+def run_query(question: str) -> dict:
+    """Callable by FastAPI. Raises on error; never calls sys.exit."""
     co, index, groq_client = get_clients()
 
-    try:
-        query_embedding = embed_query(co, question)
-    except Exception as e:
-        return f"ERROR: Cohere embedding failed: {e}"
+    query_embedding = embed_query(co, question)
+    matches = retrieve(index, query_embedding)
 
-    try:
-        matches = retrieve(index, query_embedding)
-    except Exception as e:
-        return f"ERROR: Pinecone query failed: {e}"
+    sources = [
+        {"_id": m.id, "_score": round(m.score, 3), **dict(m.metadata or {})}
+        for m in matches
+    ]
 
     if not matches:
-        return "No relevant records found in the vector database. Try running the ingestion and embed scripts first."
+        return {
+            "answer": "No relevant records found in the vector database. Try running the ingestion and embed scripts first.",
+            "sources": [],
+        }
 
     context = build_context(matches)
+    completion = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+        ],
+        temperature=0.2,
+        max_tokens=1024,
+    )
+    return {"answer": completion.choices[0].message.content, "sources": sources}
 
-    user_message = f"Context:\n{context}\n\nQuestion: {question}"
 
+def ask(question: str) -> str:
+    """CLI wrapper — catches all errors and returns them as strings."""
     try:
-        completion = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=0.2,
-            max_tokens=1024,
-        )
-        return completion.choices[0].message.content
+        return run_query(question)["answer"]
     except Exception as e:
-        return f"ERROR: Groq completion failed: {e}"
+        return f"ERROR: {e}"
 
 
 if __name__ == "__main__":

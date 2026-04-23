@@ -131,7 +131,7 @@ def filter_and_clean(df: pd.DataFrame) -> pd.DataFrame:
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> int:
     print("=== GDELT 2.0 Ingestion ===")
 
     url = get_latest_gdelt_url()
@@ -142,6 +142,7 @@ def main():
     out_path = PROCESSED_DIR / "gdelt_events.csv"
     events_df.to_csv(out_path, index=False)
     print(f"Saved {len(events_df):,} events → {out_path}")
+    return len(events_df)
 
 
 if __name__ == "__main__":

@@ -158,13 +158,13 @@ def normalize(records: list[dict]) -> pd.DataFrame:
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> int:
     print("=== USASpending DoD Contract Ingestion ===")
 
     records = fetch_contracts()
     if not records:
         print("No records returned. Check API availability.")
-        return
+        return 0
 
     df = normalize(records)
 
@@ -172,6 +172,7 @@ def main():
     df.to_csv(out_path, index=False)
     print(f"Saved {len(df):,} contracts → {out_path}")
     print(f"Total obligated: ${df['award_amount'].sum():,.0f}")
+    return len(df)
 
 
 if __name__ == "__main__":
